@@ -1,5 +1,5 @@
 [package]
-name = "actix"
+name = "actix-hello"
 version = "0.1.0"
 edition = "2021"
 
@@ -12,6 +12,3 @@ chrono = "0.4.34"
 lazy_static = "1.4.0"
 serde = { version = "1.0.191", features = ["derive"] }
 tera = "1.19.1"
-
-[profile.release]
-opt-level = 3

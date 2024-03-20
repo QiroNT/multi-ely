@@ -1,16 +1,16 @@
-use std::{fs::File, io::Read};
-
 use axum::{
+    body::Body,
     extract::{Path, Query},
-    http::HeaderMap,
+    http::header,
     response::IntoResponse,
     routing::{get, post},
     serve, Json, Router,
 };
 use axum_template::{engine::Engine, RenderHtml};
+use minijinja::Environment;
 use serde::{Deserialize, Serialize};
-use tera::Tera;
 use tokio::net::TcpListener;
+use tokio_util::io::ReaderStream;
 
 #[derive(Serialize, Deserialize)]
 struct Ping {
@@ -22,7 +22,7 @@ struct QueryParams {
     name: String,
 }
 
-type AppEngine = Engine<Tera>;
+type AppEngine = Engine<Environment<'static>>;
 
 #[derive(Serialize)]
 pub struct PageContext {
@@ -38,22 +38,19 @@ async fn mirror(Json(payload): Json<Ping>) -> Json<Ping> {
 }
 
 async fn params(Path(id): Path<u32>, Query(query): Query<QueryParams>) -> impl IntoResponse {
-    let mut headers = HeaderMap::new();
-    headers.insert("x-powered-by", "benchmark".parse().unwrap());
-
-    (headers, format!("{} {}", id, query.name))
+    (
+        [("x-powered-by", "benchmark")],
+        format!("{} {}", id, query.name),
+    )
 }
 
 async fn ely() -> impl IntoResponse {
-    let mut file = File::open("public/ely.png").expect("public/ely.jpg doesn't existed");
-
-    let mut buffer = Vec::new();
-    file.read_to_end(&mut buffer).expect("Read buffer");
-
-    let mut headers = HeaderMap::new();
-    headers.insert("content-type", "image/png".parse().unwrap());
-
-    (headers, axum::body::Bytes::from(buffer))
+    (
+        [(header::CONTENT_TYPE, "image/png")],
+        Body::from_stream(ReaderStream::new(
+            tokio::fs::File::open("public/ely.png").await.unwrap(),
+        )),
+    )
 }
 
 async fn page(engine: AppEngine, Query(query): Query<QueryParams>) -> impl IntoResponse {
@@ -62,18 +59,12 @@ async fn page(engine: AppEngine, Query(query): Query<QueryParams>) -> impl IntoR
     RenderHtml("page.html", engine, context)
 }
 
-#[tokio::main]
+#[tokio::main(flavor = "current_thread")]
 async fn main() {
-    let mut tera = match Tera::new("templates/**/*") {
-        Ok(t) => t,
-        Err(e) => {
-            println!("Parsing error(s): {}", e);
-
-            std::process::exit(1);
-        }
-    };
-
-    tera.autoescape_on(vec![".html"]);
+    let mut jinja = Environment::new();
+    jinja
+        .add_template("page.html", include_str!("../templates/page.html"))
+        .unwrap();
 
     let app = Router::new()
         .route("/", get(root))
@@ -81,7 +72,7 @@ async fn main() {
         .route("/json", post(mirror))
         .route("/ely.png", get(ely))
         .route("/page.html", get(page))
-        .with_state(Engine::from(tera));
+        .with_state(Engine::from(jinja));
 
     let listener = TcpListener::bind("0.0.0.0:3000").await.unwrap();
 

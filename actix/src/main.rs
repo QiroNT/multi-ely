@@ -77,7 +77,7 @@ lazy_static! {
     };
 }
 
-#[actix_web::main]
+#[actix_web::main(flavor = "current_thread")]
 async fn main() -> std::io::Result<()> {
     HttpServer::new(|| {
         App::new()
