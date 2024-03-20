@@ -47,8 +47,9 @@ async fn params(Path(id): Path<u32>, Query(query): Query<QueryParams>) -> impl I
 async fn ely() -> impl IntoResponse {
     (
         [(header::CONTENT_TYPE, "image/png")],
-        Body::from_stream(ReaderStream::new(
+        Body::from_stream(ReaderStream::with_capacity(
             tokio::fs::File::open("public/ely.png").await.unwrap(),
+            256 * 1024,
         )),
     )
 }

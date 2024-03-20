@@ -16,7 +16,7 @@ process = Bun.spawn({
 await Bun.sleep(1000)
 await $`bash ./scripts/ely-wrk.sh`
 
-await process.kill()
+process.kill(9 /* SIGKILL */)
 await Bun.sleep(2000)
 
 console.log("Axum")
@@ -27,7 +27,7 @@ process = Bun.spawn({
 await Bun.sleep(1000)
 await $`bash ./scripts/ely-wrk.sh`
 
-await process.kill()
+process.kill(9 /* SIGKILL */)
 await Bun.sleep(2000)
 
 console.log("Actix")
@@ -38,4 +38,5 @@ process = Bun.spawn({
 await Bun.sleep(1000)
 await $`bash ./scripts/ely-wrk.sh`
 
-await process.kill()
+process.kill(9 /* SIGKILL */)
+await process.exited
